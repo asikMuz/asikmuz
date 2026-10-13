@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -5,41 +6,201 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Asik.MUZ — Admin</title>
   <style>
+    * { box-sizing: border-box; }
     body {
       margin: 0;
-      padding: 20px;
+      padding: 18px;
       background: #101014;
-      color: white;
+      color: #fff;
       font-family: Arial, sans-serif;
     }
     .panel {
-      max-width: 400px;
-      margin: 40px auto;
+      max-width: 480px;
+      margin: 25px auto;
       padding: 22px;
       background: #1d1d25;
-      border-radius: 16px;
+      border-radius: 18px;
     }
-    h2 { color: #b69cff; }
+    h1 { color: #b69cff; }
     input, textarea, button {
-      box-sizing: border-box;
       width: 100%;
-      margin: 8px 0;
-      padding: 12px;
+      padding: 13px;
+      margin: 7px 0;
       border: 0;
-      border-radius: 8px;
+      border-radius: 9px;
+      font-size: 16px;
+    }
+    input, textarea {
+      background: #2b2b35;
+      color: white;
+    }
+    textarea {
+      min-height: 150px;
+      resize: vertical;
     }
     button {
       background: #9b75ff;
       color: white;
       font-weight: bold;
+      cursor: pointer;
     }
+    .secondary { background: #383842; }
+    #message { overflow-wrap: anywhere; }
+    .hidden { display: none; }
+    small { color: #c7c7d0; }
   </style>
 </head>
 <body>
   <div class="panel">
-    <h2>Asik.MUZ Admin</h2>
-    <p>Панель управления сайтом</p>
-    <p>Скоро здесь появится форма добавления песен.</p>
+    <h1>Asik.MUZ 🎵</h1>
+    <p>Панель администратора</p>
+
+    <section id="login">
+      <h3>Вход в аккаунт</h3>
+      <input id="email" type="email"
+        placeholder="Email" autocomplete="username">
+      <input id="password" type="password"
+        placeholder="Пароль" autocomplete="current-password">
+      <button id="loginBtn">Войти</button>
+    </section>
+
+    <section id="admin" class="hidden">
+      <h3>Добавить песню</h3>
+
+      <input id="title" placeholder="Название песни">
+      <input id="artist" placeholder="Исполнитель">
+      <input id="cover" type="url"
+        placeholder="Ссылка на обложку (https://...)">
+      <textarea id="lyrics"
+        placeholder="Текст песни"></textarea>
+
+      <button id="addBtn">Добавить песню</button>
+      <button id="logoutBtn" class="secondary">Выйти</button>
+    </section>
+
+    <p id="message" role="status"></p>
+    <small>Asik.MUZ Admin Panel</small>
   </div>
+
+  <script type="module">
+    import { initializeApp }
+      from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDwUBo7aIGrjhslS594p4ULBhm1EGHTGsM",
+      authDomain: "asik-muz.firebaseapp.com",
+      projectId: "asik-muz",
+      storageBucket: "asik-muz.firebasestorage.app",
+      messagingSenderId: "821177185140",
+      appId: "1:821177185140:web:18ccc2b196386334733221"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const $ = id => document.getElementById(id);
+    const message = $("message");
+
+    $("loginBtn").addEventListener("click", async () => {
+      const email = $("email").value.trim();
+      const password = $("password").value;
+
+      if (!email || !password) {
+        message.textContent = "Введите email и пароль.";
+        return;
+      }
+
+      $("loginBtn").disabled = true;
+      message.textContent = "Выполняется вход...";
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (error) {
+        message.textContent = "Ошибка входа: " + error.message;
+      } finally {
+        $("loginBtn").disabled = false;
+      }
+    });
+
+    onAuthStateChanged(auth, user => {
+      $("login").classList.toggle("hidden", !!user);
+      $("admin").classList.toggle("hidden", !user);
+
+      if (user) {
+        message.textContent = "Вы вошли в аккаунт.";
+      } else {
+        message.textContent = "Войдите, чтобы добавить песню.";
+      }
+    });
+
+    $("addBtn").addEventListener("click", async () => {
+      const title = $("title").value.trim();
+      const artist = $("artist").value.trim();
+      const cover = $("cover").value.trim();
+      const lyrics = $("lyrics").value.trim();
+
+      if (!auth.currentUser) {
+        message.textContent = "Сначала войдите в аккаунт.";
+        return;
+      }
+
+      if (!title || !artist || !lyrics) {
+        message.textContent =
+          "Введите название, исполнителя и текст песни.";
+        return;
+      }
+
+      if (cover && !/^https:\/\/\S+$/i.test(cover)) {
+        message.textContent =
+          "Обложка должна быть ссылкой HTTPS.";
+        return;
+      }
+
+      $("addBtn").disabled = true;
+      message.textContent = "Сохраняем песню...";
+
+      try {
+        await addDoc(collection(db, "songs"), {
+          title,
+          artist,
+          cover,
+          lyrics,
+          createdAt: serverTimestamp()
+        });
+
+        $("title").value = "";
+        $("artist").value = "";
+        $("cover").value = "";
+        $("lyrics").value = "";
+
+        message.textContent =
+          "Песня сохранена в Firebase! 🎵";
+      } catch (error) {
+        message.textContent =
+          "Ошибка сохранения: " + error.message;
+      } finally {
+        $("addBtn").disabled = false;
+      }
+    });
+
+    $("logoutBtn").addEventListener("click", async () => {
+      await signOut(auth);
+    });
+  </script>
 </body>
 </html>
