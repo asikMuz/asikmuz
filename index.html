@@ -108,6 +108,30 @@ document.getElementById("search").addEventListener("input", e => {
 });
 
 render(data);
+<script type="module">
+  import { initializeApp } from
+    "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+
+  import { getFirestore } from
+    "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+  import { getAuth } from
+    "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDwUBo7aIGrjhslS594p4ULBhm1EGHTGsM",
+    authDomain: "asik-muz.firebaseapp.com",
+    projectId: "asik-muz",
+    storageBucket: "asik-muz.firebasestorage.app",
+    messagingSenderId: "821177185140",
+    appId: "1:821177185140:web:18ccc2b196386334733221"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  console.log("Asik.MUZ успешно подключен к Firebase!");
 </script>
 </body>
 </html>
